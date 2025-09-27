@@ -1,49 +1,51 @@
+DROP TABLE IF EXISTS StudentEnrollments;
 CREATE TABLE StudentEnrollments (
-    enrollment_id INT PRIMARY KEY,
+    enrollment_id INT PRIMARY KEY AUTO_INCREMENT,
     student_name VARCHAR(100) NOT NULL,
     course_id VARCHAR(10) NOT NULL,
     enrollment_date DATE NOT NULL,
-    UNIQUE (student_name, course_id) 
+    UNIQUE(student_name, course_id)
+);
 
-INSERT INTO StudentEnrollments VALUES
-(1, 'Ashish', 'CSE101', '2024-07-01'),
-(2, 'Smaran', 'CSE102', '2024-07-01'),
-(3, 'Vaibhav', 'CSE101', '2024-07-01');
-
---PartA(Session A)
+-- Part A: Prevent duplicates
 START TRANSACTION;
-INSERT INTO StudentEnrollments VALUES (4, 'Ashish', 'CSE101', '2024-07-01');
-COMMIT;
---PartA(SessionB)
-START TRANSACTION;
-INSERT INTO StudentEnrollments VALUES (5, 'Ashish', 'CSE101', '2024-07-01');
+INSERT INTO StudentEnrollments (student_name, course_id, enrollment_date) 
+VALUES ('Ashish', 'CSE101', '2024-07-01');
 COMMIT;
 
---PartB(SessionA)
 START TRANSACTION;
-SELECT * FROM StudentEnrollments
-WHERE student_name = 'Ashish' AND course_id = 'CSE101'
+INSERT IGNORE INTO StudentEnrollments (student_name, course_id, enrollment_date) 
+VALUES ('Ashish', 'CSE101', '2024-07-01');
+COMMIT;
+
+-- Part B: Row-level lock
+START TRANSACTION;
+SELECT * FROM StudentEnrollments 
+WHERE student_name='Ashish' AND course_id='CSE101'
 FOR UPDATE;
---PartB(SessionB)
-START TRANSACTION;
-UPDATE StudentEnrollments
-SET enrollment_date = '2024-07-10'
-WHERE student_name = 'Ashish' AND course_id = 'CSE101';
 
---PartC(SessionA)
+-- Another session (blocked until commit)
 START TRANSACTION;
-SELECT * FROM StudentEnrollments
-WHERE student_name = 'Ashish' AND course_id = 'CSE101'
+UPDATE StudentEnrollments 
+SET enrollment_date='2024-07-02'
+WHERE student_name='Ashish' AND course_id='CSE101';
+COMMIT;
+
+-- Part C: Consistency with locking
+START TRANSACTION;
+SELECT * FROM StudentEnrollments 
+WHERE student_name='Ashish' AND course_id='CSE101'
 FOR UPDATE;
-UPDATE StudentEnrollments
-SET enrollment_date = '2024-07-15'
-WHERE student_name = 'Ashish' AND course_id = 'CSE101';
---PartC(SessionB)
+UPDATE StudentEnrollments 
+SET enrollment_date='2024-07-05'
+WHERE student_name='Ashish' AND course_id='CSE101';
+COMMIT;
+
 START TRANSACTION;
-UPDATE StudentEnrollments
-SET enrollment_date = '2024-07-20'
-WHERE student_name = 'Ashish' AND course_id = 'CSE101';
-
-
-
-
+SELECT * FROM StudentEnrollments 
+WHERE student_name='Ashish' AND course_id='CSE101'
+FOR UPDATE;
+UPDATE StudentEnrollments 
+SET enrollment_date='2024-07-10'
+WHERE student_name='Ashish' AND course_id='CSE101';
+COMMIT;
